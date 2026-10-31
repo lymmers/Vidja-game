@@ -64,9 +64,9 @@ func _test_multiple_effects() -> void:
 	var battle = Battle.new(8)
 	_check(battle.grant_effects("hero", effects), "multiple effects can be registered")
 	_check(not battle.grant_effects("hero", [effects[0]]), "duplicate effect IDs are rejected")
-	_check(battle.grant_effects("hero", [{"id": "mod_c", "trigger": "before_damage", "operation": "add", "value": 0, "damage_type": "physical", "name": "Third Ward"}]), "new effects can be added without discarding existing effects")
+	_check(battle.grant_effects("hero", [{"id": "mod_c", "trigger": "before_damage", "operation": "subtract", "value": 1, "damage_type": "physical", "name": "Third Ward"}]), "new effects can be added without discarding existing effects")
 	var hit = battle.resolve_hit(battle.hero, 20, "physical")
-	_check(hit.get("damage") == 7, "multiple effect definitions stack after 2 armor: (20-2)*0.5-2 = 7")
+	_check(hit.get("damage") == 6, "multiple effect definitions stack after 2 armor: (20-2)*0.5-2-1 = 6")
 	_check(hit.get("modifiers", []).size() == 4, "combat ledger includes armor and all three registered effects")
 
 func _test_validation() -> void:
