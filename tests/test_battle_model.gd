@@ -49,13 +49,13 @@ func _test_final_stand() -> void:
 	battle.select_skill("final_stand")
 	battle.hero.hp = 5
 	var lethal: Dictionary = battle.resolve_hit(battle.hero, 100, "magic")
-	_check(int(lethal["damage"]) == 4 and bool(lethal["final_stand"]), "final stand leaves 1 hp")
+	_check(int(lethal["damage"]) == 4 and lethal["triggered_effects"].size() == 1, "final stand leaves 1 hp")
 	_check(battle.hero.hp == 1, "final stand hp exactly 1")
 	var followup: Dictionary = battle.resolve_hit(battle.hero, 50, "physical")
 	_check(int(followup["damage"]) == 0 and battle.hero.hp == 1, "immune to follow-up in same action")
 	battle.begin_action()
 	var second: Dictionary = battle.resolve_hit(battle.hero, 100, "magic")
-	_check(battle.hero.hp == 0 and not bool(second["final_stand"]), "final stand once per encounter")
+	_check(battle.hero.hp == 0 and second["triggered_effects"].is_empty(), "final stand once per encounter")
 
 func _test_fireball() -> void:
 	var battle = BattleScript.new(17)
