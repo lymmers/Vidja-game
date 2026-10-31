@@ -70,6 +70,7 @@ func _test_multiple_effects() -> void:
 func _test_validation() -> void:
 	_check(Validator.validate_skill({"name":"BROKEN", "effects":[{"id":"x", "trigger":"lethal", "operation":"made_up"}]}).size() > 0, "invalid skill operation rejected")
 	_check(Validator.validate_skill(Skills.details("final_stand")).is_empty(), "existing Final Stand definition valid")
+	_check(not Validator.validate_effect({"id": "bad", "trigger": "lethal", "operation": "heal"}).is_empty(), "incompatible trigger/operation rejected")
 	_check(Validator.validate_encounter(Encounters.get_definition(2)).is_empty(), "existing skeleton definition valid")
 	_check(not Encounters.has_definition(999), "undefined encounter is not secretly a goblin")
 	_check(Encounters.get_definition(999).is_empty(), "unknown encounter returns no definition")
