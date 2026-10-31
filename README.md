@@ -37,3 +37,5 @@ While a hit is animated, its live readout shows the real damage, type, and formu
 ## Engineering foundation
 
 The codebase keeps combat calculations independent of animations and UI. Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the exact responsibilities and examples of adding modifiers, damage types, skills, enemy attacks and eventual 2× presentation speed. Current game speed remains 1× in the UI; the engine exposes a configurable visual speed without affecting battle outcomes.
+
+**Reactive skills are data-driven:** Final Stand is now defined using generic `on_damage` conditions and effects. See the architecture guide and `tests/test_generic_effects.gd` for adding another death-prevention skill without modifying the damage pipeline.
