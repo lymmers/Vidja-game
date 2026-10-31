@@ -19,6 +19,9 @@ func _test_screen() -> void:
 	await process_frame
 	_check(screen.draft_overlay.visible, "Initial skill draft should pause play")
 	_check(screen.combat_log_entries.size() == 1, "Log starts with encounter heading")
+	screen._set_game_speed(2.0)
+	_check(is_equal_approx(screen.presentation_clock.wait_seconds(0.8), 0.4), "2x visual delay halves")
+	_check(is_equal_approx(screen.stage.animation_speed, 2.0), "stage animations use presentation speed")
 	_check(screen.draft_holder.get_child_count() == 3, "First draft offers 3 skills")
 
 	screen._choose_skill("fireball")
