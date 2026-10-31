@@ -1,9 +1,19 @@
 extends RefCounted
 class_name BattleModel
-## Turn-based rules live here, separate from animations and the skill UI.
+## Owns logical turns, RNG, skill state and encounter state. Not visual time.
+## DamagePipeline resolves hits; catalogs describe skills and enemy attacks.
 
 const UnitScript = preload("res://scripts/combat/battle_unit.gd")
 const SkillScript = preload("res://scripts/skills/skill_catalog.gd")
+const DamageScript = preload("res://scripts/combat/damage_pipeline.gd")
+const EncounterScript = preload("res://scripts/combat/encounter_catalog.gd")
+
+const HERO_HP: int = 110
+const HERO_ATTACK_MIN: int = 12
+const HERO_ATTACK_MAX: int = 19
+const HERO_ARMOR: int = 2
+const HERO_CRIT_CHANCE: float = 0.17
+const CRITICAL_MULTIPLIER: float = 1.5
 
 var hero: BattleUnit
 var enemy: BattleUnit
@@ -29,16 +39,17 @@ func _init(seed_value: int = -1) -> void:
 
 func reset() -> void:
 	owned_skills.clear()
-	hero = UnitScript.new("THE WAYFARER", 110, 12, 19, 2, 0.17)
+	hero = UnitScript.new("THE WAYFARER", HERO_HP, HERO_ATTACK_MIN, HERO_ATTACK_MAX, HERO_ARMOR, HERO_CRIT_CHANCE)
 	start_encounter(1)
 
 
 func start_encounter(number: int) -> void:
 	encounter = number
-	if encounter == 2:
-		enemy = UnitScript.new("BONE ALCHEMIST", 75, 10, 14, 1, 0.12)
-	else:
-		enemy = UnitScript.new("MOSS GOBLIN", 72, 9, 13, 2, 0.14)
+	var info: Dictionary = EncounterScript.get_definition(number)
+	enemy = UnitScript.new(
+		str(info["name"]), int(info["hp"]), int(info["attack_min"]),
+		int(info["attack_max"]), int(info["armor"]), float(info["crit_chance"])
+	)
 	turn_index = 0
 	enemy_turns = 0
 	final_stand_used = false
@@ -59,61 +70,77 @@ func select_skill(id: String) -> bool:
 
 
 func begin_action() -> void:
-	# Invulnerability only protects against additional hits in the SAME action.
+	# Final Stand's immunity expires at the start of the *next logical action*.
 	immune_this_action = false
 
 
-func resolve_hit(target: BattleUnit, attack_power: int, damage_type: String, bonus_modifiers: Array[Dictionary] = []) -> Dictionary:
-	# The damage ledger travels with the hit. UI never tries to guess the arithmetic.
-	var base_damage: int = maxi(1, attack_power)
-	var damage: int = base_damage
+func _defensive_modifiers(target: BattleUnit, damage_type: String, extra_defenses: Array[Dictionary]) -> Array[Dictionary]:
 	var modifiers: Array[Dictionary] = []
-	for bonus in bonus_modifiers:
-		var amount: int = int(bonus.get("amount", 0))
-		damage += amount
-		if amount != 0:
-			modifiers.append({"name": str(bonus.get("name", "Bonus")), "amount": amount})
+	# Additive armor is currently a physical-only stat. Future damage types
+	# can use the same generic resistance mechanism below.
+	if damage_type == "physical" and target.armor > 0:
+		modifiers.append({"name": "Armor", "operation": "subtract", "value": target.armor})
 
-	if target == hero and immune_this_action:
-		modifiers.append({"name": "Final Stand Immunity", "amount": -damage})
-		return {
-			"base_damage": base_damage, "modifiers": modifiers,
-			"damage": 0, "damage_type": damage_type,
-			"final_stand": false, "immune": true,
-		}
+	if target == hero:
+		for skill_id in owned_skills:
+			var effect: Dictionary = SkillScript.details(skill_id).get("on_defend", {})
+			if not effect.is_empty():
+				modifiers.append(effect)
 
-	if damage_type == "physical":
-		var after_armor: int = maxi(1, damage - target.armor)
-		if after_armor != damage:
-			modifiers.append({"name": "Armor", "amount": after_armor - damage})
-		damage = after_armor
-		if target == hero and has_skill("iron_skin"):
-			var after_skin: int = maxi(1, roundi(float(damage) * 0.8))
-			if after_skin != damage:
-				modifiers.append({"name": "Iron Skin (20%)", "amount": after_skin - damage})
-			damage = after_skin
-	elif damage_type == "magic" and target.magic_resistance > 0.0:
-		var resist: float = clampf(target.magic_resistance, 0.0, 1.0)
-		var after_resist: int = maxi(1, roundi(float(damage) * (1.0 - resist)))
-		if after_resist != damage:
-			modifiers.append({"name": "Magic Resistance (%d%%)" % roundi(resist * 100.0), "amount": after_resist - damage})
-		damage = after_resist
+	var resistance: float = target.resistance_for(damage_type)
+	if resistance > 0.0:
+		modifiers.append({
+			"name": "%s Resistance (%d%%)" % [damage_type.capitalize(), roundi(resistance * 100.0)],
+			"operation": "multiply", "value": 1.0 - resistance,
+		})
+	modifiers.append_array(extra_defenses)
+	return modifiers
 
-	var triggered: bool = false
-	if target == hero and has_skill("final_stand") and not final_stand_used and damage >= hero.hp:
+
+func resolve_hit(
+	target: BattleUnit,
+	attack_power: int,
+	damage_type: String,
+	bonus_modifiers: Array[Dictionary] = [],
+	extra_defenses: Array[Dictionary] = []
+) -> Dictionary:
+	var can_stand: bool = target == hero and has_skill("final_stand") and not final_stand_used
+	var result: Dictionary = DamageScript.resolve(
+		target, attack_power, damage_type, bonus_modifiers,
+		_defensive_modifiers(target, damage_type, extra_defenses),
+		can_stand, target == hero and immune_this_action
+	)
+	if bool(result["final_stand"]):
 		final_stand_used = true
 		immune_this_action = true
-		triggered = true
-		var saved_damage: int = maxi(0, hero.hp - 1)
-		modifiers.append({"name": "Final Stand", "amount": saved_damage - damage})
-		damage = saved_damage
+	return result
 
-	target.take_damage(damage)
-	return {
-		"base_damage": base_damage, "modifiers": modifiers,
-		"damage": damage, "damage_type": damage_type,
-		"final_stand": triggered, "immune": false,
-	}
+
+func _make_event(kind: String, actor: String, critical: bool, hit: Dictionary) -> Dictionary:
+	# Avoid duplicated event fields for basic, potion and extra skill attacks.
+	var event: Dictionary = hit.duplicate(true)
+	event["kind"] = kind
+	event["attacker"] = actor
+	event["critical"] = critical
+	return event
+
+
+func _append_attack_skills(events: Array[Dictionary], attack_roll: int) -> void:
+	if not enemy.is_alive():
+		return
+	for skill_id in owned_skills:
+		var ability: Dictionary = SkillScript.details(skill_id).get("on_attack", {})
+		if ability.is_empty() or rng.randf() >= float(ability.get("chance", 0.0)):
+			continue
+		var empowered: int = maxi(1, roundi(float(attack_roll) * float(ability.get("power_multiplier", 1.0))))
+		var bonus: Array[Dictionary] = [{
+			"name": str(ability.get("modifier_name", "Ability")),
+			"operation": "add", "value": empowered - attack_roll,
+		}]
+		var hit: Dictionary = resolve_hit(enemy, attack_roll, str(ability["damage_type"]), bonus)
+		events.append(_make_event(str(ability["kind"]), "hero", false, hit))
+		if not enemy.is_alive():
+			break
 
 
 func take_next_turn() -> Dictionary:
@@ -124,39 +151,23 @@ func take_next_turn() -> Dictionary:
 	var attacker: BattleUnit = hero if hero_attacking else enemy
 	var target: BattleUnit = enemy if hero_attacking else hero
 	var attack_roll: int = rng.randi_range(attacker.min_attack, attacker.max_attack)
-	var events: Array[Dictionary] = []
 	var actor: String = "hero" if hero_attacking else "enemy"
-
+	var action: Dictionary = EncounterScript.BASIC_ATTACK
 	if not hero_attacking:
 		enemy_turns += 1
-	var potion: bool = not hero_attacking and encounter == 2 and enemy_turns % 3 == 0
-	var critical: bool = not potion and rng.randf() < attacker.crit_chance
-	var attack_power: int = roundi(float(attack_roll) * 1.5) if critical else attack_roll
-	var damage_type: String = "magic" if potion else "physical"
-	var crit_modifiers: Array[Dictionary] = []
+		action = EncounterScript.get_action(encounter, enemy_turns)
+	var kind: String = str(action["kind"])
+	var damage_type: String = str(action["damage_type"])
+	var critical: bool = bool(action.get("can_crit", true)) and rng.randf() < attacker.crit_chance
+	var attack_power: int = roundi(float(attack_roll) * CRITICAL_MULTIPLIER) if critical else attack_roll
+	var bonuses: Array[Dictionary] = []
 	if critical:
-		crit_modifiers.append({"name": "Critical", "amount": attack_power - attack_roll})
-	var hit: Dictionary = resolve_hit(target, attack_roll, damage_type, crit_modifiers)
-	events.append({
-		"kind": "potion" if potion else "attack", "attacker": actor,
-		"damage_type": damage_type, "damage": hit["damage"],
-		"critical": critical, "final_stand": hit["final_stand"],
-		"immune": hit["immune"], "base_damage": hit["base_damage"],
-		"modifiers": hit["modifiers"],
-	})
+		bonuses.append({"name": "Critical", "operation": "add", "value": attack_power - attack_roll})
+	var hit: Dictionary = resolve_hit(target, attack_roll, damage_type, bonuses)
+	var events: Array[Dictionary] = [_make_event(kind, actor, critical, hit)]
 
-	# Fireball is a bonus attack after a successful basic strike, not a replacement.
-	# It uses 150% of the rolled attack power, without critical multipliers.
-	if hero_attacking and enemy.is_alive() and has_skill("fireball") and rng.randf() < 0.5:
-		var spell_power: int = maxi(1, roundi(float(attack_roll) * 1.5))
-		var spell_bonus: Array[Dictionary] = [{"name": "Fireball (150%)", "amount": spell_power - attack_roll}]
-		var spell: Dictionary = resolve_hit(enemy, attack_roll, "magic", spell_bonus)
-		events.append({
-			"kind": "fireball", "attacker": "hero", "damage_type": "magic",
-			"damage": spell["damage"], "critical": false, "final_stand": false,
-			"immune": spell["immune"], "base_damage": spell["base_damage"],
-			"modifiers": spell["modifiers"],
-		})
+	if hero_attacking:
+		_append_attack_skills(events, attack_roll)
 
 	turn_index += 1
 	if not target.is_alive():
