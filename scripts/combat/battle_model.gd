@@ -7,6 +7,7 @@ const UnitScript = preload("res://scripts/combat/battle_unit.gd")
 const SkillScript = preload("res://scripts/skills/skill_catalog.gd")
 const DamageScript = preload("res://scripts/combat/damage_pipeline.gd")
 const EncounterScript = preload("res://scripts/combat/encounter_catalog.gd")
+const EffectStateScript = preload("res://scripts/combat/combat_effect_state.gd")
 
 const HERO_HP: int = 110
 const HERO_ATTACK_MIN: int = 12
@@ -24,8 +25,7 @@ var is_finished: bool = false
 var winner: String = ""
 var rng: RandomNumberGenerator
 var owned_skills: Array[String] = []
-var final_stand_used: bool = false
-var immune_this_action: bool = false
+var effect_state: CombatEffectState
 
 
 func _init(seed_value: int = -1) -> void:
@@ -39,6 +39,7 @@ func _init(seed_value: int = -1) -> void:
 
 func reset() -> void:
 	owned_skills.clear()
+	effect_state = EffectStateScript.new()
 	hero = UnitScript.new("THE WAYFARER", HERO_HP, HERO_ATTACK_MIN, HERO_ATTACK_MAX, HERO_ARMOR, HERO_CRIT_CHANCE)
 	start_encounter(1)
 
@@ -52,8 +53,7 @@ func start_encounter(number: int) -> void:
 	)
 	turn_index = 0
 	enemy_turns = 0
-	final_stand_used = false
-	immune_this_action = false
+	effect_state.start_encounter()
 	is_finished = false
 	winner = ""
 
@@ -70,8 +70,7 @@ func select_skill(id: String) -> bool:
 
 
 func begin_action() -> void:
-	# Final Stand's immunity expires at the start of the *next logical action*.
-	immune_this_action = false
+	effect_state.begin_action()
 
 
 func _defensive_modifiers(target: BattleUnit, damage_type: String, extra_defenses: Array[Dictionary]) -> Array[Dictionary]:
@@ -97,23 +96,37 @@ func _defensive_modifiers(target: BattleUnit, damage_type: String, extra_defense
 	return modifiers
 
 
+func _reactive_effects_for(target: BattleUnit, extra_reactions: Array[Dictionary]) -> Array[Dictionary]:
+	var definitions: Array[Dictionary] = []
+	if target == hero:
+		for skill_id in owned_skills:
+			var reaction: Dictionary = SkillScript.details(skill_id).get("on_damage", {})
+			if reaction.is_empty():
+				continue
+			# An effect's ID identifies its usage counter; names are only for UI.
+			var instance: Dictionary = reaction.duplicate(true)
+			instance["id"] = skill_id
+			definitions.append(instance)
+	definitions.append_array(extra_reactions)
+	return effect_state.available_reactions(str(target.get_instance_id()), definitions)
+
+
 func resolve_hit(
 	target: BattleUnit,
 	attack_power: int,
 	damage_type: String,
 	bonus_modifiers: Array[Dictionary] = [],
-	extra_defenses: Array[Dictionary] = []
+	extra_defenses: Array[Dictionary] = [],
+	extra_reactions: Array[Dictionary] = []
 ) -> Dictionary:
-	var can_stand: bool = target == hero and has_skill("final_stand") and not final_stand_used
-	var result: Dictionary = DamageScript.resolve(
+	var target_key: String = str(target.get_instance_id())
+	var hit: Dictionary = DamageScript.resolve(
 		target, attack_power, damage_type, bonus_modifiers,
 		_defensive_modifiers(target, damage_type, extra_defenses),
-		can_stand, target == hero and immune_this_action
+		_reactive_effects_for(target, extra_reactions)
 	)
-	if bool(result["final_stand"]):
-		final_stand_used = true
-		immune_this_action = true
-	return result
+	effect_state.record_triggers(target_key, hit["triggered_effects"])
+	return hit
 
 
 func _make_event(kind: String, actor: String, critical: bool, hit: Dictionary) -> Dictionary:
