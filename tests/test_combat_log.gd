@@ -88,7 +88,7 @@ func _test_final_stand_breakdown() -> void:
 	battle.select_skill("final_stand")
 	battle.hero.hp = 5
 	var hit: Dictionary = battle.resolve_hit(battle.hero, 20, "physical")
-	_check(hit["damage"] == 4 and _sum(hit) == 4 and hit["final_stand"], "lethal hit is capped at 4 and ledger reconciles")
+	_check(hit["damage"] == 4 and _sum(hit) == 4 and hit["triggered_effects"].size() == 1, "lethal hit is capped at 4 and ledger reconciles")
 	var event: Dictionary = hit.duplicate(true)
 	event["kind"] = "attack"
 	event["attacker"] = "enemy"
