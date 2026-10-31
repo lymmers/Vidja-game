@@ -6,10 +6,18 @@ const DEFINITIONS: Dictionary = {
 	"fireball": {
 		"name": "FIREBALL", "symbol": "F", "color": Color("e99a5a"),
 		"description": "50% chance on attack to cast a fireball dealing 150% attack damage.",
+		"on_attack": {
+			"kind": "fireball", "damage_type": "magic", "chance": 0.5,
+			"power_multiplier": 1.5, "modifier_name": "Fireball (150%)",
+		},
 	},
 	"iron_skin": {
 		"name": "IRON SKIN", "symbol": "I", "color": Color("a7b9cf"),
 		"description": "Take 20% less damage from physical attacks.",
+		"on_defend": {
+			"name": "Iron Skin (20%)", "damage_type": "physical",
+			"operation": "multiply", "value": 0.8,
+		},
 	},
 	"final_stand": {
 		"name": "FINAL STAND", "symbol": "+", "color": Color("e4c76c"),
