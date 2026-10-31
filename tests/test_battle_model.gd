@@ -106,4 +106,4 @@ func _test_two_encounters() -> void:
 	_check(battle.hero.hp == 72, "HP persists between encounters")
 	_check(battle.has_skill("iron_skin"), "skills persist between encounters")
 	battle.start_encounter(1)
-	_check(battle.enemy.title == "MOSS GOBLIN", "goblin encounter")
+	_check(battle.enemy.title == "SKELETON", "first skeleton encounter")

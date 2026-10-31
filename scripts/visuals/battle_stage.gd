@@ -1,7 +1,11 @@
 extends Node2D
 class_name BattleStage
-## Procedural placeholder art: everything drawn in Godot, no assets to install.
-## Swap this node for animated sprites later; the BattleModel won't change.
+## Presentation only: native cutout actors share a stage with legacy procedural art.
+## Animation impact signals present already-resolved hits; they never apply damage.
+const Visuals = preload("res://scripts/visuals/character_visuals.gd")
+var hero_actor: Node2D
+var enemy_actor: Node2D
+var pose_generation: int = 0
 
 var hero_attack_offset: float = 0.0
 var enemy_attack_offset: float = 0.0
@@ -11,15 +15,50 @@ var active_attack: Tween
 var active_impact: Tween
 var active_spell: Tween
 # Presentation only; changing this cannot change damage or turn frequency.
-var animation_speed: float = 1.0
-var enemy_kind: String = "goblin"
+var animation_speed: float = 1.0:
+	set(value):
+		animation_speed = maxf(0.01, value)
+		for actor in [hero_actor, enemy_actor]:
+			if is_instance_valid(actor):
+				actor.get_node("AnimationPlayer").speed_scale = animation_speed
+var enemy_kind: String = "skeleton_guard":
+	set(value):
+		if enemy_kind == value:
+			return
+		enemy_kind = value
+		if is_inside_tree():
+			_refresh_enemy()
 var flying_spell: String = ""
 var spell_progress: float = 0.0
 
 
 func _ready() -> void:
+	# Supplied parts use positive local z indices. Keep the whole arena below
+	# screen UI (z=0), including full-screen drafts and the combat log.
+	z_index = -100
+	hero_actor = _add_actor("wayfarer", "hero", Vector2(210, 751))
+	_refresh_enemy()
 	# The landscape is static. Only draw each frame while something animates.
 	set_process(false)
+	queue_redraw()
+
+
+func _add_actor(visual: String, side: String, feet: Vector2) -> Node2D:
+	var actor: Node2D = Visuals.instantiate_actor(visual)
+	if actor != null:
+		add_child(actor)
+		actor.position = feet
+		actor.get_node("AnimationPlayer").speed_scale = animation_speed
+		actor.connect("impact", _show_impact.bind(side))
+	return actor
+
+
+func _refresh_enemy() -> void:
+	# Removing only the active enemy leaves the persistent player/equipment intact.
+	if is_instance_valid(enemy_actor):
+		remove_child(enemy_actor)
+		enemy_actor.queue_free()
+	enemy_actor = _add_actor(enemy_kind, "enemy", Vector2(515, 751))
 	queue_redraw()
 
 
@@ -36,6 +75,10 @@ func _tweens_running() -> bool:
 
 
 func reset_pose() -> void:
+	pose_generation += 1
+	for actor in [hero_actor, enemy_actor]:
+		if is_instance_valid(actor):
+			actor.call("play_action", &"idle")
 	if active_attack and active_attack.is_running():
 		active_attack.kill()
 	if active_impact and active_impact.is_running():
@@ -53,6 +96,15 @@ func reset_pose() -> void:
 
 
 func animate_attack(attacker: String) -> void:
+	var actor: Node2D = hero_actor if attacker == "hero" else enemy_actor
+	if is_instance_valid(actor):
+		var generation: int = pose_generation
+		actor.call("play_action", &"attack")
+		# Observe native completion/cancellation without encoding its duration.
+		# Reset and visual replacement can interrupt this wait safely.
+		while generation == pose_generation and is_instance_valid(actor) and actor.get("active_action") == &"attack":
+			await get_tree().process_frame
+		return
 	var moving_property: String = "hero_attack_offset" if attacker == "hero" else "enemy_attack_offset"
 	var distance: float = 62.0 if attacker == "hero" else -62.0
 	set_process(true)
@@ -65,6 +117,9 @@ func animate_attack(attacker: String) -> void:
 
 
 func _show_impact(attacker: String) -> void:
+	var target: Node2D = enemy_actor if attacker == "hero" else hero_actor
+	if is_instance_valid(target):
+		target.call("play_action", &"hit")
 	var hit_property: String = "enemy_hit_flash" if attacker == "hero" else "hero_hit_flash"
 	set(hit_property, 1.0)
 	if active_impact and active_impact.is_running():
@@ -88,8 +143,9 @@ func animate_spell(kind: String) -> void:
 
 func _draw() -> void:
 	_draw_landscape()
-	_draw_hero(Vector2(210.0 + hero_attack_offset, 751.0))
-	if enemy_kind == "skeleton":
+	if enemy_actor != null:
+		pass # Native character scene draws itself; do not also draw the placeholder.
+	elif enemy_kind == "skeleton":
 		_draw_skeleton(Vector2(515.0 + enemy_attack_offset, 751.0))
 	else:
 		_draw_goblin(Vector2(515.0 + enemy_attack_offset, 751.0))
@@ -133,39 +189,6 @@ func _draw_landscape() -> void:
 		draw_circle(p, 3, Color("dbbf98", 0.65))
 	# Vignette-like bands framing the arena.
 	draw_rect(Rect2(0, 824, 720, 456), Color("161b2d"))
-
-
-func _draw_hero(feet: Vector2) -> void:
-	var x: float = feet.x
-	var y: float = feet.y
-	# Shadows and cyan hit flash.
-	draw_circle(Vector2(x, y + 3), 44, Color(0.08, 0.09, 0.13, 0.55))
-	if hero_hit_flash > 0.0:
-		draw_circle(Vector2(x, y - 96), 79, Color(1.0, 0.45, 0.3, 0.35 * hero_hit_flash))
-	# Hero's traveling cloak.
-	_poly([Vector2(x - 32, y - 89), Vector2(x + 26, y - 91), Vector2(x + 43, y - 15), Vector2(x - 51, y - 15)], Color("2e516b"))
-	_poly([Vector2(x - 47, y - 22), Vector2(x - 25, y - 76), Vector2(x - 20, y - 15)], Color("254357"))
-	# Boots and body.
-	draw_rect(Rect2(x - 27, y - 33, 23, 36), Color("343548"))
-	draw_rect(Rect2(x + 6, y - 33, 23, 36), Color("343548"))
-	draw_rect(Rect2(x - 31, y - 81, 64, 57), Color("6c7891"))
-	draw_rect(Rect2(x - 31, y - 48, 64, 13), Color("a88b68"))
-	draw_rect(Rect2(x - 4, y - 47, 13, 13), Color("f0c876"))
-	# Shield left, sword right.
-	_poly([Vector2(x - 46, y - 80), Vector2(x - 17, y - 77), Vector2(x - 18, y - 34), Vector2(x - 35, y - 19), Vector2(x - 51, y - 42)], Color("b4bcc6"))
-	_poly([Vector2(x - 41, y - 74), Vector2(x - 24, y - 71), Vector2(x - 26, y - 38), Vector2(x - 36, y - 29), Vector2(x - 46, y - 43)], Color("467c86"))
-	draw_line(Vector2(x + 44, y - 50), Vector2(x + 81, y - 143), Color("d9e7eb"), 10)
-	draw_line(Vector2(x + 45, y - 54), Vector2(x + 80, y - 144), Color("a0c6da"), 4)
-	draw_line(Vector2(x + 29, y - 70), Vector2(x + 61, y - 58), Color("dfc18b"), 8)
-	draw_circle(Vector2(x + 39, y - 40), 10, Color("907052"))
-	# Large chibi head, hair, and helmet trim.
-	draw_circle(Vector2(x, y - 116), 49, Color("c5d0dc"))
-	draw_circle(Vector2(x, y - 109), 42, Color("eec9a0"))
-	_poly([Vector2(x - 45, y - 125), Vector2(x - 40, y - 158), Vector2(x - 9, y - 170), Vector2(x + 22, y - 161), Vector2(x + 43, y - 137), Vector2(x + 29, y - 133), Vector2(x + 14, y - 143), Vector2(x - 13, y - 133)], Color("5a5261"))
-	draw_rect(Rect2(x - 48, y - 130, 96, 10), Color("dbe4e9"))
-	draw_circle(Vector2(x - 17, y - 111), 5, Color("263346"))
-	draw_circle(Vector2(x + 16, y - 111), 5, Color("263346"))
-	draw_line(Vector2(x - 5, y - 92), Vector2(x + 5, y - 92), Color("945d58"), 3)
 
 
 func _draw_goblin(feet: Vector2) -> void:

@@ -14,7 +14,7 @@ Avoid adding an abstract system unless a real new game mechanic requires it.
 | `scripts/combat/encounter_catalog.gd` | Enemy stats and their special-action interval/type; the turn loop doesn't know the skeleton by name. |
 | `scripts/skills/skill_catalog.gd` | Skill descriptions and data-defined attack/defense effects. |
 | `scripts/battle/presentation_clock.gd` | Presentation speed conversion only; never used by the battle model. |
-| `scripts/visuals/battle_stage.gd` | Placeholder art and tweening. Redraws only while an animation is active. |
+| `scripts/visuals/battle_stage.gd` | Mixed native cutout and procedural presentation; observes native contact and completion without applying combat damage. |
 | `scripts/battle_screen.gd` | The scene, input, animation ordering, skill draft, HP bars and combat-log UI. |
 
 ## Adding a resistance or damage type
@@ -107,3 +107,29 @@ The active-skill bar is a horizontally scrollable list that grows with the owned
 ## Regression contract
 
 In addition to the original Godot headless suites, `tests/test_architecture.gd` checks party-first, enemy-first modifiers, companions, bonus actions, separated RNG, multiple stacked defensive effects, and content validation. The on-screen UI smoke test also checks that the active-skill list grows dynamically.
+
+## Verified character integration (31 October 2026)
+
+`character_visuals.gd` is a presentation-only scene registry. Wayfarer and
+`skeleton_guard` instance supplied PR #4 scenes from `characters/`, with their
+original AnimationPlayer tracks, joint hierarchies and equipment slots intact.
+`character_actor.gd` is the supplied actor controller, unchanged. The registry
+sets scale/facing; BattleStage places feet at the existing arena anchors. Native
+`impact` plays target recoil/flash only. The model has already resolved damage.
+Stage attack waits observe native completion or cancellation, never a hardcoded
+animation duration. `animation_speed` updates AnimationPlayer speed_scale.
+
+Encounter 1 selects `skeleton_guard` and displays SKELETON with its old stats.
+Encounter 2 still selects `skeleton`, the **procedural Bone Alchemist**, with its
+original drawing, attack tween and potion behavior. These keys intentionally differ.
+Restart cancels native actions and restores the first enemy; player nodes persist
+between encounters so future equipment attachments need not be rebuilt.
+
+`tools/test.sh` imports the project, runs every tests/test_*.gd, rejects engine
+errors and requires completion markers. Tests verify supplied rigs, native impacts,
+interruption, equipment APIs, mixed presentation, both drafts and complete seeded
+progression. Reviewed limits and proposed follow-ups: ARCHITECTURE_AUDIT.md.
+
+The stage uses z=-100 so native positive sprite layers remain below the z=0
+HUD, skill draft and combat-log overlays. Effective-z regression tests cover all
+rig Sprite2D parts; native internal layer ordering is preserved.

@@ -25,3 +25,41 @@ Before treating a gameplay feature as finished, ask:
 - Did we verify tests and disclose anything not tested?
 
 **Present status:** Prototype code is still evolving; these are forward-looking engineering requirements, not a claim that every existing file already meets them.
+
+## Project roles and controlled autonomy
+
+The Game Director is final authority over gameplay, architecture, visual direction,
+and scope. The Design Chat prepares designs and approved instructions; Codex handles
+implementation, integration, debugging and automated tests; the Art Department supplies
+character artwork, rigs and animations.
+
+Independently implement explicitly approved features, make routine technical decisions,
+fix bugs without changing intended gameplay, perform minor behavior-preserving refactors,
+improve tests, performance, maintainability and clarity.
+
+Request approval before changing mechanics or balance, making significant architectural
+changes, introducing systems/features beyond approved scope, altering established design,
+replacing major systems/frameworks, or making consequential assumptions about unspecified
+behavior. Explain significant problems and propose options; do not silently redesign.
+
+## Extensibility and quality contract
+
+Use reusable triggers, conditions, effects and parameters rather than skill-name checks
+in core damage logic. Keep initiative configurable and companion/pet actions general.
+UI should adapt to content where practical; gameplay must be testable without visuals.
+Avoid both brittle special cases and premature abstraction.
+
+Preserve existing functionality unless explicitly approved otherwise. Add practical
+regression tests and run relevant existing tests after modifications. Report passes,
+failures, unverified behavior, compatibility issues and unresolved regressions honestly.
+Keep combat results independent of animation playback and speed.
+
+## Documentation discipline
+
+Keep approved documentation synchronized with implementation. Use these status meanings:
+- **Implemented:** exists in the codebase and has been verified (state verification limits).
+- **Approved:** agreed upon but not necessarily implemented.
+- **Proposed:** under discussion, not approved.
+
+Never present proposed work as complete. Preserve supplied working rigs and animations;
+report actual limitations before replacing, flattening or restructuring them.

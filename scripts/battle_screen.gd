@@ -1,6 +1,6 @@
 extends Control
 ## UI and fight sequence only; game rules live in battle_model.gd.
-## Everything is generated in code: no sprites or addons are needed.
+## Character scenes and animation are owned by the presentation stage.
 
 const ModelScript = preload("res://scripts/combat/battle_model.gd")
 const StageScript = preload("res://scripts/visuals/battle_stage.gd")
@@ -61,7 +61,7 @@ func _make_interface() -> void:
 	_label("B A T T L E   L A B   /   P R O T O T Y P E   0 3", Vector2(20, 93), Vector2(680, 30), 17, COLOR_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 	_panel(Rect2(48, 142, 624, 4), Color("465064"), 2)
 	_label("THE WAYFARER", Vector2(45, 163), Vector2(296, 31), 20, COLOR_LIGHT)
-	enemy_name_label = _label("MOSS GOBLIN", Vector2(380, 163), Vector2(294, 31), 20, COLOR_LIGHT, HORIZONTAL_ALIGNMENT_RIGHT)
+	enemy_name_label = _label("", Vector2(380, 163), Vector2(294, 31), 20, COLOR_LIGHT, HORIZONTAL_ALIGNMENT_RIGHT)
 	_panel(Rect2(47, 210, 297, 25), Color("3a4555"), 13)
 	_panel(Rect2(376, 210, 297, 25), Color("3a4555"), 13)
 	hero_hp_bar = _panel(Rect2(49, 212, 293, 21), COLOR_GREEN, 10)
@@ -209,14 +209,15 @@ func _start_run() -> void:
 	run_id += 1
 	battle = ModelScript.new()
 	pending_encounter = 1
-	stage.enemy_kind = "goblin"
+	var first: Dictionary = EncounterScript.get_definition(1)
+	stage.enemy_kind = str(first["visual"])
 	stage.reset_pose()
 	log_overlay.visible = false
 	combat_log_entries.clear()
 	log_text.clear()
-	_append_combat_log("ENCOUNTER 1 — MOSS GOBLIN")
-	encounter_label.text = "ENCOUNTER 01     /     ASHEN PASS"
-	enemy_name_label.text = "MOSS GOBLIN"
+	_append_combat_log("ENCOUNTER 1 — %s" % first["name"])
+	encounter_label.text = "ENCOUNTER 01     /     %s" % first["area"]
+	enemy_name_label.text = str(first["name"])
 	replay_button.visible = false
 	turn_label.text = "TURN 01"
 	message_label.text = "Choose your first skill..."
@@ -277,7 +278,7 @@ func _advance_after_draft() -> void:
 		stage.reset_pose()
 		_append_combat_log("ENCOUNTER %d — %s" % [battle.encounter, battle.enemy.title])
 	var info: Dictionary = EncounterScript.get_definition(battle.encounter)
-	stage.enemy_kind = str(info.get("visual", "goblin"))
+	stage.enemy_kind = str(info.get("visual", ""))
 	encounter_label.text = "ENCOUNTER %02d     /     %s" % [battle.encounter, str(info.get("area", "UNKNOWN"))]
 	enemy_name_label.text = str(info.get("name", "UNKNOWN"))
 	message_label.text = str(info.get("intro", "A new enemy blocks your path!"))

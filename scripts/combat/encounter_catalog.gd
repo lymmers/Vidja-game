@@ -5,8 +5,8 @@ class_name EncounterCatalog
 
 const ENCOUNTERS: Dictionary = {
 	1: {
-		"name": "MOSS GOBLIN", "hp": 72, "visual": "goblin", "area": "ASHEN PASS",
-        "intro": "A moss goblin blocks your path!",
+		"name": "SKELETON", "hp": 72, "visual": "skeleton_guard", "area": "ASHEN PASS",
+        "intro": "A skeleton blocks your path!",
 		"attack_min": 9, "attack_max": 13, "armor": 2, "crit_chance": 0.14,
 	},
 	2: {
