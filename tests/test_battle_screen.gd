@@ -29,6 +29,7 @@ func _test_screen() -> void:
 	_check(not screen.draft_overlay.visible, "Choosing closes the draft")
 	_check(screen.battle.has_skill("fireball"), "Selected skill is active")
 	_check(screen.skill_slots[0].text.contains("FIREBALL"), "Skill bar shows chosen skill")
+	_check(screen.skill_slots.size() == 1, "Skill bar creates one slot for one equipped skill")
 	_check(screen.log_text.get_parsed_text().contains("FIREBALL"), "Equipped skill appears in log")
 	screen._open_log()
 	_check(screen.log_overlay.visible, "Combat log overlay opens")
@@ -52,6 +53,7 @@ func _test_screen() -> void:
 	_check(screen.battle.encounter == 2, "Second encounter starts after selecting")
 	_check(screen.stage.enemy_kind == "skeleton", "Skeleton art is selected")
 	_check(screen.skill_slots[1].text.contains("IRON SKIN"), "Second skill is shown")
+	_check(screen.skill_slots.size() == 2, "Skill bar grows dynamically with owned skills")
 	if failures == 0:
 		print("PASS: battle screen startup, both skill drafts and skill bar, combat log")
 	quit(1 if failures else 0)
