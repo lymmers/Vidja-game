@@ -158,7 +158,9 @@ func grant_effects(actor_id: String, definitions: Array[Dictionary]) -> bool:
 	if not combatants.has(actor_id):
 		return false
 	var combined: Array[Dictionary] = []
-	combined.append_array(extra_effects.get(actor_id, []))
+	# Dictionary.get() returns a Variant/untyped Array; copy entries into the typed array.
+	for existing_effect in extra_effects.get(actor_id, []):
+		combined.append(existing_effect)
 	for effect in definitions:
 		var instance: Dictionary = effect.duplicate(true)
 		if not ValidatorScript.validate_effect(instance).is_empty():
