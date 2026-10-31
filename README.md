@@ -33,3 +33,7 @@ Design details: `docs/FEATURE_SKILLS.md`.
 ## Combat log (Prototype 0.3)
 
 While a hit is animated, its live readout shows the real damage, type, and formula. Use **COMBAT LOG** to review the complete scrollable history, including each critical bonus, armor mitigation, Iron Skin, magical resistance (where present), Fireball multiplier, and Final Stand. Damage is calculated once in the combat model and recorded with the result; the UI does not independently recalculate damage.
+
+## Engineering foundation
+
+The codebase keeps combat calculations independent of animations and UI. Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the exact responsibilities and examples of adding modifiers, damage types, skills, enemy attacks and eventual 2× presentation speed. Current game speed remains 1× in the UI; the engine exposes a configurable visual speed without affecting battle outcomes.
