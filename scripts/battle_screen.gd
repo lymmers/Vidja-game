@@ -52,7 +52,7 @@ func _make_interface() -> void:
 	_panel(Rect2(0, 0, 720, 283), COLOR_BG, 0)
 	_panel(Rect2(0, 0, 720, 9), COLOR_GOLD, 0)
 	_label("TINY LEGENDS", Vector2(39, 30), Vector2(642, 50), 45, COLOR_LIGHT, HORIZONTAL_ALIGNMENT_CENTER)
-	_label("B A T T L E   L A B   /   P R O T O T Y P E   0 2", Vector2(20, 93), Vector2(680, 30), 17, COLOR_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	_label("B A T T L E   L A B   /   P R O T O T Y P E   0 3", Vector2(20, 93), Vector2(680, 30), 17, COLOR_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 	_panel(Rect2(48, 142, 624, 4), Color("465064"), 2)
 	_label("THE WAYFARER", Vector2(45, 163), Vector2(296, 31), 20, COLOR_LIGHT)
 	enemy_name_label = _label("MOSS GOBLIN", Vector2(380, 163), Vector2(294, 31), 20, COLOR_LIGHT, HORIZONTAL_ALIGNMENT_RIGHT)
