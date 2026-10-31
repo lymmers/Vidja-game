@@ -29,3 +29,7 @@ godot --headless --path . --script res://tests/test_battle_model.gd
 ```
 
 Design details: `docs/FEATURE_SKILLS.md`.
+
+## Combat log (Prototype 0.3)
+
+While a hit is animated, its live readout shows the real damage, type, and formula. Use **COMBAT LOG** to review the complete scrollable history, including each critical bonus, armor mitigation, Iron Skin, magical resistance (where present), Fireball multiplier, and Final Stand. Damage is calculated once in the combat model and recorded with the result; the UI does not independently recalculate damage.
