@@ -19,7 +19,7 @@ jobs:
       - name: Run game rules tests
         run: /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/test_battle_model.gd
       - name: Run draft screen smoke test
-        run: /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/test_battle_screen.gd
+        run: timeout 45s /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/test_battle_screen.gd
 
       - name: Run transparent combat log tests
         run: /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/test_combat_log.gd
