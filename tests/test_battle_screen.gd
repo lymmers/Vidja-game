@@ -26,14 +26,14 @@ func _test_screen() -> void:
 	_check(not screen.draft_overlay.visible, "Choosing closes the draft")
 	_check(screen.battle.has_skill("fireball"), "Selected skill is active")
 	_check(screen.skill_slots[0].text.contains("FIREBALL"), "Skill bar shows chosen skill")
-	_check(screen.log_text.text.contains("Fireball"), "Equipped skill appears in log")
+	_check(screen.log_text.get_parsed_text().contains("Fireball"), "Equipped skill appears in log")
 	screen._open_log()
 	_check(screen.log_overlay.visible, "Combat log overlay opens")
 	screen._close_log()
 	_check(not screen.log_overlay.visible, "Combat log overlay closes")
 	var hit: Dictionary = screen.battle.take_next_turn()["events"][0]
 	screen._record_hit(hit)
-	_check(screen.log_text.text.contains("Physical damage"), "Combat log records real damage")
+	_check(screen.log_text.get_parsed_text().contains("Physical damage"), "Combat log records real damage")
 	_check(screen.combat_log_entries.size() >= 3, "Combat history accumulates")
 
 	# Jump to the between-fights selection without relying on random combat.
