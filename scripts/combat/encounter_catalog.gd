@@ -6,10 +6,12 @@ class_name EncounterCatalog
 const ENCOUNTERS: Dictionary = {
 	1: {
 		"name": "MOSS GOBLIN", "hp": 72, "visual": "goblin", "area": "ASHEN PASS",
+        "intro": "A moss goblin blocks your path!",
 		"attack_min": 9, "attack_max": 13, "armor": 2, "crit_chance": 0.14,
 	},
 	2: {
 		"name": "BONE ALCHEMIST", "hp": 75, "visual": "skeleton", "area": "BONE LABORATORY",
+        "intro": "A skeleton alchemist uncorks a fire potion!",
 		"attack_min": 10, "attack_max": 14, "armor": 1, "crit_chance": 0.12,
 		"special_action": {
 			"every": 3, "kind": "potion", "damage_type": "magic", "can_crit": false,
