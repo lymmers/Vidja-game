@@ -9,13 +9,30 @@ var hero_hit_flash: float = 0.0
 var enemy_hit_flash: float = 0.0
 var active_attack: Tween
 var active_impact: Tween
+var active_spell: Tween
+# Presentation only; changing this cannot change damage or turn frequency.
+var animation_speed: float = 1.0
 var enemy_kind: String = "goblin"
 var flying_spell: String = ""
 var spell_progress: float = 0.0
 
 
+func _ready() -> void:
+	# The landscape is static. Only draw each frame while something animates.
+	set_process(false)
+	queue_redraw()
+
+
 func _process(_delta: float) -> void:
 	queue_redraw()
+	if not _tweens_running():
+		set_process(false)
+
+
+func _tweens_running() -> bool:
+	return (active_attack != null and active_attack.is_running()) \
+		or (active_impact != null and active_impact.is_running()) \
+		or (active_spell != null and active_spell.is_running())
 
 
 func reset_pose() -> void:
@@ -23,6 +40,9 @@ func reset_pose() -> void:
 		active_attack.kill()
 	if active_impact and active_impact.is_running():
 		active_impact.kill()
+	if active_spell and active_spell.is_running():
+		active_spell.kill()
+	set_process(false)
 	hero_attack_offset = 0.0
 	enemy_attack_offset = 0.0
 	hero_hit_flash = 0.0
@@ -35,11 +55,12 @@ func reset_pose() -> void:
 func animate_attack(attacker: String) -> void:
 	var moving_property: String = "hero_attack_offset" if attacker == "hero" else "enemy_attack_offset"
 	var distance: float = 62.0 if attacker == "hero" else -62.0
+	set_process(true)
 	active_attack = create_tween()
-	active_attack.tween_property(self, moving_property, distance, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	active_attack.tween_property(self, moving_property, distance, 0.18 / animation_speed).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	active_attack.tween_callback(Callable(self, "_show_impact").bind(attacker))
-	active_attack.tween_interval(0.08)
-	active_attack.tween_property(self, moving_property, 0.0, 0.27).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	active_attack.tween_interval(0.08 / animation_speed)
+	active_attack.tween_property(self, moving_property, 0.0, 0.27 / animation_speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await active_attack.finished
 
 
@@ -48,18 +69,21 @@ func _show_impact(attacker: String) -> void:
 	set(hit_property, 1.0)
 	if active_impact and active_impact.is_running():
 		active_impact.kill()
+	set_process(true)
 	active_impact = create_tween()
-	active_impact.tween_property(self, hit_property, 0.0, 0.36)
+	active_impact.tween_property(self, hit_property, 0.0, 0.36 / animation_speed)
 
 
 func animate_spell(kind: String) -> void:
 	flying_spell = kind
 	spell_progress = 0.0
-	var tween: Tween = create_tween()
-	tween.tween_property(self, "spell_progress", 1.0, 0.58).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tween.tween_callback(Callable(self, "_show_impact").bind("enemy" if kind == "potion" else "hero"))
-	await tween.finished
+	set_process(true)
+	active_spell = create_tween()
+	active_spell.tween_property(self, "spell_progress", 1.0, 0.58 / animation_speed).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	active_spell.tween_callback(Callable(self, "_show_impact").bind("enemy" if kind == "potion" else "hero"))
+	await active_spell.finished
 	flying_spell = ""
+	queue_redraw()
 
 
 func _draw() -> void:
