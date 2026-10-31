@@ -6,6 +6,8 @@ const ModelScript = preload("res://scripts/combat/battle_model.gd")
 const StageScript = preload("res://scripts/visuals/battle_stage.gd")
 const SkillScript = preload("res://scripts/skills/skill_catalog.gd")
 const LogScript = preload("res://scripts/combat/combat_log_formatter.gd")
+const ClockScript = preload("res://scripts/battle/presentation_clock.gd")
+const MAX_LOG_ENTRIES: int = 250
 
 const COLOR_BG = Color("161b2d")
 const COLOR_CARD = Color("222a40")
@@ -17,6 +19,7 @@ const COLOR_RED = Color("e89d8d")
 
 var battle: BattleModel
 var stage: BattleStage
+var presentation_clock: PresentationClock
 var run_id: int = 0
 var pending_encounter: int = 1
 var choosing: bool = false
@@ -42,6 +45,7 @@ var combat_log_entries: Array[String] = []
 
 
 func _ready() -> void:
+	presentation_clock = ClockScript.new()
 	stage = StageScript.new()
 	add_child(stage)
 	_make_interface()
@@ -172,13 +176,26 @@ func _close_log() -> void:
 
 func _append_combat_log(entry: String) -> void:
 	combat_log_entries.append(entry)
-	log_text.append_text(entry + "\n\n")
+	if combat_log_entries.size() > MAX_LOG_ENTRIES:
+		# Bounded history avoids an ever-growing RichTextLabel during long farming.
+		combat_log_entries.pop_front()
+		log_text.clear()
+		for saved_entry in combat_log_entries:
+			log_text.append_text(saved_entry + "\n\n")
+	else:
+		log_text.append_text(entry + "\n\n")
 
 
 func _record_hit(action: Dictionary) -> void:
 	var formatted: String = LogScript.format_event(action, battle.enemy.title)
 	message_label.text = formatted
 	_append_combat_log("Turn %02d  /  %s" % [battle.turn_index, formatted])
+
+
+func _set_game_speed(multiplier: float) -> void:
+	# This touches playback only. The combat model remains entirely unmodified.
+	presentation_clock.set_speed(multiplier)
+	stage.animation_speed = presentation_clock.speed
 
 
 func _start_run() -> void:
@@ -265,7 +282,7 @@ func _advance_after_draft() -> void:
 
 
 func _play_battle(this_run: int) -> void:
-	await get_tree().create_timer(0.8).timeout
+	await get_tree().create_timer(presentation_clock.wait_seconds(0.8)).timeout
 	while this_run == run_id and not battle.is_finished:
 		var outcome: Dictionary = battle.take_next_turn()
 		if outcome.is_empty():
@@ -282,10 +299,10 @@ func _play_battle(this_run: int) -> void:
 				await stage.animate_attack(str(action["attacker"]))
 			if this_run != run_id:
 				return
-			if bool(action["final_stand"]):
-				await get_tree().create_timer(0.42).timeout
+			if not action.get("triggered_effects", []).is_empty():
+				await get_tree().create_timer(presentation_clock.wait_seconds(0.42)).timeout
 		_update_health()
-		await get_tree().create_timer(0.42).timeout
+		await get_tree().create_timer(presentation_clock.wait_seconds(0.42)).timeout
 	if this_run == run_id and battle.is_finished:
 		_finish_battle()
 

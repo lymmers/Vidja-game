@@ -27,8 +27,12 @@ static func format_event(event: Dictionary, enemy_name: String) -> String:
 	var result: String = "%s for %d %s damage (%s)." % [action_text, damage, dtype, breakdown]
 	if bool(event.get("critical", false)):
 		result += " CRITICAL HIT!"
-	if bool(event.get("final_stand", false)):
-		result += " FINAL STAND! 1 HP remains."
+	for triggered_effect in event.get("triggered_effects", []):
+		if str(triggered_effect.get("operation", "")) == "leave_hp":
+			result += " %s! %d HP remains." % [
+				str(triggered_effect.get("name", "Survival")),
+				int(triggered_effect.get("hp_floor", 1)),
+			]
 	if bool(event.get("immune", false)):
 		result += " IMMUNE!"
 	return result
