@@ -22,6 +22,10 @@ const DEFINITIONS: Dictionary = {
 	"final_stand": {
 		"name": "FINAL STAND", "symbol": "+", "color": Color("e4c76c"),
 		"description": "Once per encounter, lethal damage leaves you at 1 HP and grants immunity for the rest of that action.",
+		"on_damage": {
+			"name": "Final Stand", "trigger": "lethal", "operation": "leave_hp",
+			"hp_floor": 1, "uses_per_encounter": 1, "grants_immunity": "action",
+		},
 	},
 }
 
