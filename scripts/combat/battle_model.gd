@@ -161,8 +161,11 @@ func grant_effects(actor_id: String, definitions: Array[Dictionary]) -> bool:
 	combined.append_array(extra_effects.get(actor_id, []))
 	for effect in definitions:
 		var instance: Dictionary = effect.duplicate(true)
-		if str(instance.get("id", "")).is_empty():
+		if not ValidatorScript.validate_effect(instance).is_empty():
 			return false
+		for old_effect in combined:
+			if old_effect.get("id", "") == instance["id"]:
+				return false
 		combined.append(instance)
 	extra_effects[actor_id] = combined
 	return true
