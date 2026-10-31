@@ -5,6 +5,7 @@ extends Control
 const ModelScript = preload("res://scripts/combat/battle_model.gd")
 const StageScript = preload("res://scripts/visuals/battle_stage.gd")
 const SkillScript = preload("res://scripts/skills/skill_catalog.gd")
+const EncounterScript = preload("res://scripts/combat/encounter_catalog.gd")
 const LogScript = preload("res://scripts/combat/combat_log_formatter.gd")
 const ClockScript = preload("res://scripts/battle/presentation_clock.gd")
 const MAX_LOG_ENTRIES: int = 250
@@ -34,6 +35,7 @@ var message_label: Label
 var status_label: Label
 var replay_button: Button
 var skill_slots: Array[Label] = []
+var skill_slot_holder: HBoxContainer
 var draft_overlay: ColorRect
 var draft_holder: Control
 var draft_header: Label
@@ -92,10 +94,15 @@ func _make_interface() -> void:
 
 	_panel(Rect2(24, 1098, 672, 152), Color("20283b"), 18)
 	_label("ACTIVE SKILLS", Vector2(47, 1105), Vector2(626, 34), 20, COLOR_GOLD)
-	for index in range(3):
-		_panel(Rect2(42 + index * 214, 1150, 205, 83), Color("364056"), 13)
-		var slot: Label = _label("+  EMPTY", Vector2(51 + index * 214, 1161), Vector2(185, 59), 18, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-		skill_slots.append(slot)
+	# Scrollable slots grow with the build, rather than a hard-coded slot count.
+	var skill_scroll := ScrollContainer.new()
+	skill_scroll.position = Vector2(42, 1145)
+	skill_scroll.size = Vector2(637, 93)
+	skill_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(skill_scroll)
+	skill_slot_holder = HBoxContainer.new()
+	skill_slot_holder.add_theme_constant_override("separation", 9)
+	skill_scroll.add_child(skill_slot_holder)
 
 	_make_draft()
 	_make_log_ui()
@@ -223,14 +230,14 @@ func _show_draft() -> void:
 	status_label.text = "BATTLE PAUSED - CHOOSE A SKILL"
 	for child in draft_holder.get_children():
 		child.queue_free()
-	var offered: Array[String] = SkillScript.get_choices(battle.owned_skills, 3, battle.rng)
+	var offered: Array[String] = SkillScript.get_choices(battle.owned_skills, 3, battle.draft_rng)
 	if offered.is_empty():
 		choosing = false
 		draft_overlay.visible = false
 		_advance_after_draft()
 		return
 	draft_header.text = "CHOOSE YOUR SKILL"
-	draft_hint.text = "Before fight 1" if pending_encounter == 1 else "The goblin is defeated! Choose another skill."
+	draft_hint.text = "Before fight 1" if pending_encounter == 1 else "Victory! Choose another skill."
 	# Center one, two or three available cards dynamically.
 	var gap: float = 24.0
 	var height: float = 132.0
@@ -265,16 +272,15 @@ func _choose_skill(id: String) -> void:
 
 func _advance_after_draft() -> void:
 	var this_run: int = run_id
-	if pending_encounter == 2:
-		battle.start_encounter(2)
-		stage.enemy_kind = "skeleton"
+	if pending_encounter != battle.encounter:
+		battle.start_encounter(pending_encounter)
 		stage.reset_pose()
-		encounter_label.text = "ENCOUNTER 02     /     BONE LABORATORY"
-		enemy_name_label.text = "BONE ALCHEMIST"
-		message_label.text = "A skeleton alchemist uncorks a fire potion!"
-		_append_combat_log("ENCOUNTER 2 — BONE ALCHEMIST")
-	else:
-		message_label.text = "A moss goblin blocks your path!"
+		_append_combat_log("ENCOUNTER %d — %s" % [battle.encounter, battle.enemy.title])
+	var info: Dictionary = EncounterScript.get_definition(battle.encounter)
+	stage.enemy_kind = str(info.get("visual", "goblin"))
+	encounter_label.text = "ENCOUNTER %02d     /     %s" % [battle.encounter, str(info.get("area", "UNKNOWN"))]
+	enemy_name_label.text = str(info.get("name", "UNKNOWN"))
+	message_label.text = str(info.get("intro", "A new enemy blocks your path!"))
 	turn_label.text = "TURN 01"
 	status_label.text = "AUTO BATTLE   -   WATCH THE FIGHT"
 	_update_health()
@@ -308,10 +314,10 @@ func _play_battle(this_run: int) -> void:
 
 
 func _finish_battle() -> void:
-	if battle.winner == "hero" and battle.encounter == 1:
-		message_label.text = "GOBLIN DEFEATED! Get ready for encounter 2."
-		_append_combat_log("VICTORY — MOSS GOBLIN DEFEATED")
-		pending_encounter = 2
+	if battle.winner == "hero" and EncounterScript.has_definition(battle.encounter + 1):
+		message_label.text = "%s defeated! Prepare for the next encounter." % battle.enemy.title.capitalize()
+		_append_combat_log("VICTORY — %s DEFEATED" % battle.enemy.title)
+		pending_encounter = battle.encounter + 1
 		_show_draft()
 	elif battle.winner == "hero":
 		message_label.text = "VICTORY! Both encounters cleared!"
@@ -333,14 +339,32 @@ func _update_health() -> void:
 
 
 func _update_skill_bar() -> void:
-	for index in range(skill_slots.size()):
-		if index < battle.owned_skills.size():
-			var info: Dictionary = SkillScript.details(battle.owned_skills[index])
-			skill_slots[index].text = "%s  %s" % [str(info["symbol"]), str(info["name"])]
-			skill_slots[index].add_theme_color_override("font_color", info["color"])
+	for child in skill_slot_holder.get_children():
+		skill_slot_holder.remove_child(child)
+		child.queue_free()
+	skill_slots.clear()
+	var shown: Array[String] = battle.owned_skills.duplicate()
+	if shown.is_empty():
+		shown.append("") # Display one placeholder, not a fixed number of slots.
+	for skill_id in shown:
+		var slot := Label.new()
+		slot.custom_minimum_size = Vector2(205, 83)
+		slot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		slot.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		slot.add_theme_font_size_override("font_size", 18)
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color("364056")
+		style.set_corner_radius_all(13)
+		slot.add_theme_stylebox_override("normal", style)
+		if skill_id.is_empty():
+			slot.text = "+  EMPTY"
+			slot.add_theme_color_override("font_color", COLOR_MUTED)
 		else:
-			skill_slots[index].text = "+  EMPTY"
-			skill_slots[index].add_theme_color_override("font_color", COLOR_MUTED)
+			var info: Dictionary = SkillScript.details(skill_id)
+			slot.text = "%s  %s" % [str(info["symbol"]), str(info["name"])]
+			slot.add_theme_color_override("font_color", info["color"])
+		skill_slot_holder.add_child(slot)
+		skill_slots.append(slot)
 
 
 func _style_button(button: Button, background_color: Color, text_color: Color, border_color: Color = Color.TRANSPARENT) -> void:
