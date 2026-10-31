@@ -1,27 +1,35 @@
-# Tiny Legends — Battle Lab (Prototype 01)
+# Tiny Legends — Battle Lab (Prototype 02)
 
-Our first playable Godot proof of concept for an original side-view, chibi-style mobile roguelite, inspired by the *feel* of Rogue Legend, Obsidian Knight and classic fantasy RPGs.
+Godot 4.7-compatible, 2D portrait, automatic turn-based roguelite prototype.
 
-**How to play on Windows**
+## How to run
 
-1. Download this repository: **Code → Download ZIP**, then extract it.
-2. In Godot 4.4 or newer, select **Import** and select `project.godot`.
-3. Open the project and press **F5**.
-4. Watch the hero and goblin fight automatically. When it finishes, click **FIGHT AGAIN**.
+1. Use **Code → Download ZIP** from the feature branch or check out the branch.
+2. Godot → **Import** → select `project.godot`.
+3. Press **F5**.
+4. Pick a skill from three cards. Watch the moss goblin battle.
+5. Win and pick one of the two remaining skills. Fight the Bone Alchemist.
+6. Replay resets the adventure.
 
-No third-party plugins or art assets are required. Characters and scenery are drawn in code.
+## Skills and damage types
 
-**Implemented:** one hero versus one goblin, automatic alternating turns, random attack rolls and critical hits, armor, health, win/loss screen, replay.
+- **Fireball**: 50% chance after a basic attack to deal an additional 150% of the attack roll as magic damage.
+- **Iron Skin**: take 20% less physical damage, after physical armor. Does not affect magic.
+- **Final Stand**: once per encounter, lethal damage leaves 1 HP and prevents further hits within that action.
+- **Bone Alchemist**: every third **skeleton action**, throws a fire potion replacing a regular attack, at 100% attack power, magic damage.
 
-**Not yet implemented:** randomized skill drafts, additional enemies, stages, inventory, unlockable automation, multiplayer or saves.
+Skills and current hero HP carry over into encounter 2. The skill draft only displays skills not yet owned, and safely handles an empty pool.
 
-**Foundation:** combat rules live in `scripts/combat/`, independent of the UI in `scripts/battle_screen.gd` and placeholder art in `scripts/visuals/`. This separation lets us expand or replace the artwork later.
+Combat code: `scripts/combat/` · Skill definitions: `scripts/skills/` · UI: `scripts/battle_screen.gd` · Placeholder 2D art: `scripts/visuals/`.
 
-**Headless test** (if the Godot executable is on your PATH):
+For headless tests with Godot on PATH:
+
 ```sh
 godot --headless --path . --script res://tests/test_battle_model.gd
 ```
 
-The project has not yet been run inside the user's Godot installation; please report any import/parse errors so we can fix them.
+Design details: `docs/FEATURE_SKILLS.md`.
 
-Next planned milestone: three randomized skill cards that pause play until the player picks one.
+## Combat log (Prototype 0.3)
+
+While a hit is animated, its live readout shows the real damage, type, and formula. Use **COMBAT LOG** to review the complete scrollable history, including each critical bonus, armor mitigation, Iron Skin, magical resistance (where present), Fireball multiplier, and Final Stand. Damage is calculated once in the combat model and recorded with the result; the UI does not independently recalculate damage.

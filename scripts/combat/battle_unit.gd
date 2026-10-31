@@ -1,6 +1,6 @@
 extends RefCounted
 class_name BattleUnit
-## Individual combatant's stats and HP; independent of visuals.
+## A combatant's run-time stats. Keep game rules independent of any visual nodes.
 
 var title: String
 var max_hp: int
@@ -9,6 +9,7 @@ var min_attack: int
 var max_attack: int
 var armor: int
 var crit_chance: float
+var magic_resistance: float = 0.0
 
 
 func _init(
