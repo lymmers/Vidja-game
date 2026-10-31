@@ -9,6 +9,9 @@ var min_attack: int
 var max_attack: int
 var armor: int
 var crit_chance: float
+# Extensible resistance table: adding a new damage type needs no new if branch.
+var resistances: Dictionary = {}
+# Compatibility with current prototype tests/inspector; new code may prefer resistances.
 var magic_resistance: float = 0.0
 
 
@@ -35,3 +38,8 @@ func take_damage(amount: int) -> void:
 
 func is_alive() -> bool:
 	return hp > 0
+
+
+func resistance_for(damage_type: String) -> float:
+	var fallback: float = magic_resistance if damage_type == "magic" else 0.0
+	return clampf(float(resistances.get(damage_type, fallback)), 0.0, 1.0)
