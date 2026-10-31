@@ -5,6 +5,37 @@ class_name DataValidator
 const SUPPORTED_TRIGGERS: Array[String] = ["after_attack", "before_damage", "lethal", "always", "after_damage", "on_kill"]
 const SUPPORTED_OPS: Array[String] = ["bonus_hit", "multiply", "subtract", "add", "leave_hp", "negate_damage", "heal", "extra_action"]
 
+static func validate_effect(effect: Dictionary) -> Array[String]:
+	var errors: Array[String] = []
+	var id: String = str(effect.get("id", ""))
+	var trigger: String = str(effect.get("trigger", ""))
+	var operation: String = str(effect.get("operation", ""))
+	if id.is_empty():
+		errors.append("Every effect needs a stable ID")
+	if not SUPPORTED_TRIGGERS.has(trigger):
+		errors.append("Unknown trigger: %s" % trigger)
+	if not SUPPORTED_OPS.has(operation):
+		errors.append("Unknown operation: %s" % operation)
+	# Reject a valid operation on an incompatible hook, rather than silently
+	# failing to execute a supposedly equipped ability.
+	var compatible: Dictionary = {
+		"before_damage": ["add", "subtract", "multiply"],
+		"lethal": ["leave_hp"],
+		"always": ["negate_damage"],
+		"after_attack": ["bonus_hit", "heal", "extra_action"],
+		"after_damage": ["bonus_hit", "heal", "extra_action"],
+		"on_kill": ["bonus_hit", "heal", "extra_action"],
+	}
+	if compatible.has(trigger) and not compatible[trigger].has(operation):
+		errors.append("Effect %s cannot use %s on %s" % [id, operation, trigger])
+	if effect.has("chance") and (float(effect["chance"]) < 0.0 or float(effect["chance"]) > 1.0):
+		errors.append("Chance must be between 0 and 1: %s" % id)
+	if operation == "leave_hp" and int(effect.get("hp_floor", 0)) < 1:
+		errors.append("leave_hp requires hp_floor >= 1: %s" % id)
+	if operation == "bonus_hit" and not effect.has("damage_type"):
+		errors.append("bonus_hit needs a damage_type: %s" % id)
+	return errors
+
 static func validate_skill(definition: Dictionary) -> Array[String]:
 	var errors: Array[String] = []
 	if str(definition.get("name", "")).is_empty():
@@ -18,21 +49,10 @@ static func validate_skill(definition: Dictionary) -> Array[String]:
 			errors.append("Each skill effect must be a dictionary")
 			continue
 		var id: String = str(effect.get("id", ""))
-		if id.is_empty() or seen.has(id):
-			errors.append("Effect ID missing or duplicated: %s" % id)
+		if seen.has(id):
+			errors.append("Duplicate effect ID: %s" % id)
 		seen[id] = true
-		var trigger: String = str(effect.get("trigger", ""))
-		var operation: String = str(effect.get("operation", ""))
-		if not SUPPORTED_TRIGGERS.has(trigger):
-			errors.append("Unknown trigger: %s" % trigger)
-		if not SUPPORTED_OPS.has(operation):
-			errors.append("Unknown operation: %s" % operation)
-		if effect.has("chance") and (float(effect["chance"]) < 0.0 or float(effect["chance"]) > 1.0):
-			errors.append("Chance must be between 0 and 1: %s" % id)
-		if operation == "leave_hp" and int(effect.get("hp_floor", 0)) < 1:
-			errors.append("leave_hp requires hp_floor >= 1: %s" % id)
-		if operation == "bonus_hit" and not effect.has("damage_type"):
-			errors.append("bonus_hit needs a damage_type: %s" % id)
+		errors.append_array(validate_effect(effect))
 	return errors
 
 static func validate_encounter(definition: Dictionary) -> Array[String]:
