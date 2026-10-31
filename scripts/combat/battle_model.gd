@@ -157,7 +157,8 @@ func grant_effects(actor_id: String, definitions: Array[Dictionary]) -> bool:
 	# Used by equipment, status effects, pets and other external systems.
 	if not combatants.has(actor_id):
 		return false
-	var combined: Array[Dictionary] = extra_effects.get(actor_id, []).duplicate(true)
+	var combined: Array[Dictionary] = []
+	combined.append_array(extra_effects.get(actor_id, []))
 	for effect in definitions:
 		var instance: Dictionary = effect.duplicate(true)
 		if str(instance.get("id", "")).is_empty():
@@ -230,7 +231,7 @@ func _process_trigger(trigger: String, actor_id: String, target_id: String,
 	for effect in _effects_for(actor_id, trigger):
 		if events.size() >= MAX_CHAIN_EVENTS:
 			break
-		if rng.randf() >= float(effect.get("chance", 1.0)):
+		if float(effect.get("chance", 1.0)) < 1.0 and rng.randf() >= float(effect.get("chance", 1.0)):
 			continue
 		match str(effect.get("operation", "")):
 			"bonus_hit":
