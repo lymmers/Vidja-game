@@ -29,3 +29,6 @@ jobs:
 
       - name: Validate initiative and extensibility contracts
         run: /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/test_architecture.gd
+
+      - name: Test generic reactive effects
+        run: /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/test_generic_effects.gd
