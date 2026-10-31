@@ -39,3 +39,9 @@ While a hit is animated, its live readout shows the real damage, type, and formu
 The codebase keeps combat calculations independent of animations and UI. Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the exact responsibilities and examples of adding modifiers, damage types, skills, enemy attacks and eventual 2× presentation speed. Current game speed remains 1× in the UI; the engine exposes a configurable visual speed without affecting battle outcomes.
 
 **Reactive skills are data-driven:** Final Stand is now defined using generic `on_damage` conditions and effects. See the architecture guide and `tests/test_generic_effects.gd` for adding another death-prevention skill without modifying the damage pipeline.
+
+## Scalable foundation: initiative, effects and randomness
+
+The [refactored architecture](docs/ARCHITECTURE.md) now includes a player-side-first action scheduler with configurable initiative, companions/pets in the headless core, multi-effect skill definitions, stable combatant/effect IDs, separated combat/draft RNG, and definition validation. New encounters provide their own labels and art keys. The active-skill bar grows with the player's build. **Companions do not have on-screen sprites yet**; this is the underlying battle simulation, not a new party interface.
+
+To verify: Godot 4.7.2 CI runs `tests/test_architecture.gd` alongside the existing combat, skill, screen, and effect regression tests.

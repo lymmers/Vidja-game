@@ -64,9 +64,7 @@ func _test_fireball() -> void:
 	# Forced high probability via rerolled seeds; at least one proc across 30 attacks.
 	var proc_seen := false
 	for index in range(30):
-		battle.enemy.hp = battle.enemy.max_hp
-		battle.is_finished = false
-		battle.turn_index = 0
+		battle.start_encounter(1)
 		var result: Dictionary = battle.take_next_turn()
 		for event in result["events"]:
 			if event["kind"] == "fireball":

@@ -5,11 +5,13 @@ class_name EncounterCatalog
 
 const ENCOUNTERS: Dictionary = {
 	1: {
-		"name": "MOSS GOBLIN", "hp": 72,
+		"name": "MOSS GOBLIN", "hp": 72, "visual": "goblin", "area": "ASHEN PASS",
+        "intro": "A moss goblin blocks your path!",
 		"attack_min": 9, "attack_max": 13, "armor": 2, "crit_chance": 0.14,
 	},
 	2: {
-		"name": "BONE ALCHEMIST", "hp": 75,
+		"name": "BONE ALCHEMIST", "hp": 75, "visual": "skeleton", "area": "BONE LABORATORY",
+        "intro": "A skeleton alchemist uncorks a fire potion!",
 		"attack_min": 10, "attack_max": 14, "armor": 1, "crit_chance": 0.12,
 		"special_action": {
 			"every": 3, "kind": "potion", "damage_type": "magic", "can_crit": false,
@@ -20,9 +22,13 @@ const ENCOUNTERS: Dictionary = {
 const BASIC_ATTACK: Dictionary = {"kind": "attack", "damage_type": "physical", "can_crit": true}
 
 
+static func has_definition(number: int) -> bool:
+	return ENCOUNTERS.has(number)
+
+
 static func get_definition(number: int) -> Dictionary:
 	# A safe fallback also keeps test runs resilient to unknown chapter ids.
-	return ENCOUNTERS.get(number, ENCOUNTERS[1])
+	return ENCOUNTERS.get(number, {})
 
 
 static func get_action(number: int, enemy_action_number: int) -> Dictionary:
