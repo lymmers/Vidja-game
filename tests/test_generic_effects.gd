@@ -24,7 +24,7 @@ func _check(ok: bool, message: String) -> void:
 
 
 func _test_final_stand_uses_definition() -> void:
-	var effect: Dictionary = Skills.details("final_stand").get("on_damage", {})
+	var effect: Dictionary = Skills.effects_for("final_stand", "lethal")[0]
 	_check(effect.get("operation") == "leave_hp", "Final Stand is defined as a reusable leave-hp operation")
 	_check(effect.get("trigger") == "lethal", "Its trigger is data, not a hardcoded skill branch")
 	var battle = Battle.new(20)
