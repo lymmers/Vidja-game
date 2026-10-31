@@ -299,7 +299,7 @@ func _play_battle(this_run: int) -> void:
 				await stage.animate_attack(str(action["attacker"]))
 			if this_run != run_id:
 				return
-			if bool(action["final_stand"]):
+			if not action.get("triggered_effects", []).is_empty():
 				await get_tree().create_timer(presentation_clock.wait_seconds(0.42)).timeout
 		_update_health()
 		await get_tree().create_timer(presentation_clock.wait_seconds(0.42)).timeout
