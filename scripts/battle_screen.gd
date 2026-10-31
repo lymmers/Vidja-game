@@ -5,6 +5,7 @@ extends Control
 const ModelScript = preload("res://scripts/combat/battle_model.gd")
 const StageScript = preload("res://scripts/visuals/battle_stage.gd")
 const SkillScript = preload("res://scripts/skills/skill_catalog.gd")
+const LogScript = preload("res://scripts/combat/combat_log_formatter.gd")
 
 const COLOR_BG = Color("161b2d")
 const COLOR_CARD = Color("222a40")
@@ -34,6 +35,10 @@ var draft_overlay: ColorRect
 var draft_holder: Control
 var draft_header: Label
 var draft_hint: Label
+var log_button: Button
+var log_overlay: ColorRect
+var log_text: RichTextLabel
+var combat_log_entries: Array[String] = []
 
 
 func _ready() -> void:
@@ -60,9 +65,17 @@ func _make_interface() -> void:
 	_panel(Rect2(38, 855, 644, 177), COLOR_CARD, 22)
 	encounter_label = _label("ENCOUNTER 01     /     ASHEN PASS", Vector2(66, 870), Vector2(480, 33), 17, COLOR_GOLD)
 	turn_label = _label("TURN 01", Vector2(518, 870), Vector2(136, 33), 17, COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
-	message_label = _label("Choose your first skill...", Vector2(65, 913), Vector2(590, 106), 26, COLOR_LIGHT)
+	message_label = _label("Choose your first skill...", Vector2(65, 911), Vector2(590, 113), 20, COLOR_LIGHT)
 	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label = _label("CHOOSE A SKILL", Vector2(48, 1042), Vector2(624, 44), 18, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	status_label = _label("CHOOSE A SKILL", Vector2(48, 1042), Vector2(465, 44), 18, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	log_button = Button.new()
+	log_button.text = "COMBAT LOG"
+	log_button.position = Vector2(526, 1042)
+	log_button.size = Vector2(151, 46)
+	log_button.add_theme_font_size_override("font_size", 16)
+	_style_button(log_button, Color("39465d"), COLOR_LIGHT, COLOR_GOLD)
+	log_button.pressed.connect(_open_log)
+	add_child(log_button)
 	replay_button = Button.new()
 	replay_button.text = "RESTART ADVENTURE"
 	replay_button.position = Vector2(143, 972)
@@ -81,6 +94,7 @@ func _make_interface() -> void:
 		skill_slots.append(slot)
 
 	_make_draft()
+	_make_log_ui()
 
 
 func _make_draft() -> void:
@@ -102,12 +116,81 @@ func _make_draft() -> void:
 	draft_overlay.visible = false
 
 
+func _make_log_ui() -> void:
+	# Full-screen history is kept separate from the short live preview.
+	log_overlay = ColorRect.new()
+	log_overlay.position = Vector2.ZERO
+	log_overlay.size = Vector2(720, 1280)
+	log_overlay.color = Color(0.05, 0.07, 0.12, 0.97)
+	add_child(log_overlay)
+
+	var heading := Label.new()
+	heading.text = "COMBAT LOG"
+	heading.position = Vector2(36, 70)
+	heading.size = Vector2(490, 65)
+	heading.add_theme_font_size_override("font_size", 39)
+	heading.add_theme_color_override("font_color", COLOR_LIGHT)
+	log_overlay.add_child(heading)
+
+	var close := Button.new()
+	close.text = "CLOSE"
+	close.position = Vector2(528, 81)
+	close.size = Vector2(151, 58)
+	close.add_theme_font_size_override("font_size", 20)
+	_style_button(close, Color("39465d"), COLOR_LIGHT, COLOR_GOLD)
+	close.pressed.connect(_close_log)
+	log_overlay.add_child(close)
+
+	var panel := Panel.new()
+	panel.position = Vector2(22, 167)
+	panel.size = Vector2(676, 1015)
+	var background := StyleBoxFlat.new()
+	background.bg_color = COLOR_CARD
+	background.set_corner_radius_all(17)
+	panel.add_theme_stylebox_override("panel", background)
+	log_overlay.add_child(panel)
+
+	log_text = RichTextLabel.new()
+	log_text.position = Vector2(43, 185)
+	log_text.size = Vector2(635, 980)
+	log_text.bbcode_enabled = false
+	log_text.scroll_following = true
+	log_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	log_text.add_theme_color_override("default_color", COLOR_LIGHT)
+	log_text.add_theme_font_size_override("normal_font_size", 21)
+	log_overlay.add_child(log_text)
+	log_overlay.visible = false
+
+
+func _open_log() -> void:
+	log_overlay.visible = true
+
+
+func _close_log() -> void:
+	log_overlay.visible = false
+
+
+func _append_combat_log(entry: String) -> void:
+	combat_log_entries.append(entry)
+	log_text.append_text(entry + "\n\n")
+
+
+func _record_hit(action: Dictionary) -> void:
+	var formatted: String = LogScript.format_event(action, battle.enemy.title)
+	message_label.text = formatted
+	_append_combat_log("Turn %02d  /  %s" % [battle.turn_index, formatted])
+
+
 func _start_run() -> void:
 	run_id += 1
 	battle = ModelScript.new()
 	pending_encounter = 1
 	stage.enemy_kind = "goblin"
 	stage.reset_pose()
+	log_overlay.visible = false
+	combat_log_entries.clear()
+	log_text.clear()
+	_append_combat_log("ENCOUNTER 1 — MOSS GOBLIN")
 	encounter_label.text = "ENCOUNTER 01     /     ASHEN PASS"
 	enemy_name_label.text = "MOSS GOBLIN"
 	replay_button.visible = false
@@ -159,6 +242,7 @@ func _choose_skill(id: String) -> void:
 	choosing = false
 	draft_overlay.visible = false
 	_update_skill_bar()
+	_append_combat_log("Skill equipped: %s" % str(SkillScript.details(id).get("name", id)))
 	_advance_after_draft()
 
 
@@ -171,6 +255,7 @@ func _advance_after_draft() -> void:
 		encounter_label.text = "ENCOUNTER 02     /     BONE LABORATORY"
 		enemy_name_label.text = "BONE ALCHEMIST"
 		message_label.text = "A skeleton alchemist uncorks a fire potion!"
+		_append_combat_log("ENCOUNTER 2 — BONE ALCHEMIST")
 	else:
 		message_label.text = "A moss goblin blocks your path!"
 	turn_label.text = "TURN 01"
@@ -188,22 +273,16 @@ func _play_battle(this_run: int) -> void:
 		turn_label.text = "TURN %02d" % int(outcome["number"])
 		for action in outcome["events"]:
 			var kind: String = str(action["kind"])
-			var amount: int = int(action["damage"])
+			_record_hit(action)
 			if kind == "fireball":
-				message_label.text = "FIREBALL! Magical blast for %d damage!" % amount
 				await stage.animate_spell("fireball")
 			elif kind == "potion":
-				message_label.text = "FIRE POTION! %d MAGIC damage!" % amount
 				await stage.animate_spell("potion")
 			else:
-				var who: String = "You" if str(action["attacker"]) == "hero" else ("The alchemist" if battle.encounter == 2 else "The goblin")
-				var critical: String = " CRIT!" if bool(action["critical"]) else ""
-				message_label.text = "%s hit for %d physical damage!%s" % [who, amount, critical]
 				await stage.animate_attack(str(action["attacker"]))
 			if this_run != run_id:
 				return
 			if bool(action["final_stand"]):
-				message_label.text = "FINAL STAND! Survived with 1 HP!"
 				await get_tree().create_timer(0.42).timeout
 		_update_health()
 		await get_tree().create_timer(0.42).timeout
@@ -214,14 +293,17 @@ func _play_battle(this_run: int) -> void:
 func _finish_battle() -> void:
 	if battle.winner == "hero" and battle.encounter == 1:
 		message_label.text = "GOBLIN DEFEATED! Get ready for encounter 2."
+		_append_combat_log("VICTORY — MOSS GOBLIN DEFEATED")
 		pending_encounter = 2
 		_show_draft()
 	elif battle.winner == "hero":
 		message_label.text = "VICTORY! Both encounters cleared!"
+		_append_combat_log("VICTORY — BOTH ENCOUNTERS CLEARED")
 		status_label.text = "TWO ENCOUNTERS COMPLETE"
 		replay_button.visible = true
 	else:
 		message_label.text = "DEFEAT... Your adventure ends here."
+		_append_combat_log("DEFEAT — ADVENTURE ENDED")
 		status_label.text = "TRY AGAIN WITH A NEW BUILD"
 		replay_button.visible = true
 
