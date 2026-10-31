@@ -23,3 +23,6 @@ jobs:
 
       - name: Run transparent combat log tests
         run: /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/test_combat_log.gd
+
+      - name: Run extensible combat foundation regression tests
+        run: /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script res://tests/test_foundations.gd
