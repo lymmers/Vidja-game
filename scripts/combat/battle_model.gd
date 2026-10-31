@@ -63,22 +63,57 @@ func begin_action() -> void:
 	immune_this_action = false
 
 
-func resolve_hit(target: BattleUnit, attack_power: int, damage_type: String) -> Dictionary:
+func resolve_hit(target: BattleUnit, attack_power: int, damage_type: String, bonus_modifiers: Array[Dictionary] = []) -> Dictionary:
+	# The damage ledger travels with the hit. UI never tries to guess the arithmetic.
+	var base_damage: int = maxi(1, attack_power)
+	var damage: int = base_damage
+	var modifiers: Array[Dictionary] = []
+	for bonus in bonus_modifiers:
+		var amount: int = int(bonus.get("amount", 0))
+		damage += amount
+		if amount != 0:
+			modifiers.append({"name": str(bonus.get("name", "Bonus")), "amount": amount})
+
 	if target == hero and immune_this_action:
-		return {"damage": 0, "final_stand": false, "immune": true}
-	var damage: int = maxi(1, attack_power)
+		modifiers.append({"name": "Final Stand Immunity", "amount": -damage})
+		return {
+			"base_damage": base_damage, "modifiers": modifiers,
+			"damage": 0, "damage_type": damage_type,
+			"final_stand": false, "immune": true,
+		}
+
 	if damage_type == "physical":
-		damage = maxi(1, damage - target.armor)
+		var after_armor: int = maxi(1, damage - target.armor)
+		if after_armor != damage:
+			modifiers.append({"name": "Armor", "amount": after_armor - damage})
+		damage = after_armor
 		if target == hero and has_skill("iron_skin"):
-			damage = maxi(1, roundi(float(damage) * 0.8))
+			var after_skin: int = maxi(1, roundi(float(damage) * 0.8))
+			if after_skin != damage:
+				modifiers.append({"name": "Iron Skin (20%)", "amount": after_skin - damage})
+			damage = after_skin
+	elif damage_type == "magic" and target.magic_resistance > 0.0:
+		var resist: float = clampf(target.magic_resistance, 0.0, 1.0)
+		var after_resist: int = maxi(1, roundi(float(damage) * (1.0 - resist)))
+		if after_resist != damage:
+			modifiers.append({"name": "Magic Resistance (%d%%)" % roundi(resist * 100.0), "amount": after_resist - damage})
+		damage = after_resist
+
 	var triggered: bool = false
 	if target == hero and has_skill("final_stand") and not final_stand_used and damage >= hero.hp:
 		final_stand_used = true
 		immune_this_action = true
 		triggered = true
-		damage = maxi(0, hero.hp - 1)
+		var saved_damage: int = maxi(0, hero.hp - 1)
+		modifiers.append({"name": "Final Stand", "amount": saved_damage - damage})
+		damage = saved_damage
+
 	target.take_damage(damage)
-	return {"damage": damage, "final_stand": triggered, "immune": false}
+	return {
+		"base_damage": base_damage, "modifiers": modifiers,
+		"damage": damage, "damage_type": damage_type,
+		"final_stand": triggered, "immune": false,
+	}
 
 
 func take_next_turn() -> Dictionary:
@@ -98,21 +133,29 @@ func take_next_turn() -> Dictionary:
 	var critical: bool = not potion and rng.randf() < attacker.crit_chance
 	var attack_power: int = roundi(float(attack_roll) * 1.5) if critical else attack_roll
 	var damage_type: String = "magic" if potion else "physical"
-	var hit: Dictionary = resolve_hit(target, attack_power, damage_type)
+	var crit_modifiers: Array[Dictionary] = []
+	if critical:
+		crit_modifiers.append({"name": "Critical", "amount": attack_power - attack_roll})
+	var hit: Dictionary = resolve_hit(target, attack_roll, damage_type, crit_modifiers)
 	events.append({
 		"kind": "potion" if potion else "attack", "attacker": actor,
 		"damage_type": damage_type, "damage": hit["damage"],
 		"critical": critical, "final_stand": hit["final_stand"],
+		"immune": hit["immune"], "base_damage": hit["base_damage"],
+		"modifiers": hit["modifiers"],
 	})
 
 	# Fireball is a bonus attack after a successful basic strike, not a replacement.
 	# It uses 150% of the rolled attack power, without critical multipliers.
 	if hero_attacking and enemy.is_alive() and has_skill("fireball") and rng.randf() < 0.5:
 		var spell_power: int = maxi(1, roundi(float(attack_roll) * 1.5))
-		var spell: Dictionary = resolve_hit(enemy, spell_power, "magic")
+		var spell_bonus: Array[Dictionary] = [{"name": "Fireball (150%)", "amount": spell_power - attack_roll}]
+		var spell: Dictionary = resolve_hit(enemy, attack_roll, "magic", spell_bonus)
 		events.append({
 			"kind": "fireball", "attacker": "hero", "damage_type": "magic",
 			"damage": spell["damage"], "critical": false, "final_stand": false,
+			"immune": spell["immune"], "base_damage": spell["base_damage"],
+			"modifiers": spell["modifiers"],
 		})
 
 	turn_index += 1
