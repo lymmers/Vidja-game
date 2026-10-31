@@ -26,7 +26,7 @@ func _test_screen() -> void:
 	_check(not screen.draft_overlay.visible, "Choosing closes the draft")
 	_check(screen.battle.has_skill("fireball"), "Selected skill is active")
 	_check(screen.skill_slots[0].text.contains("FIREBALL"), "Skill bar shows chosen skill")
-	_check(screen.log_text.get_parsed_text().contains("Fireball"), "Equipped skill appears in log")
+	_check(screen.log_text.get_parsed_text().contains("FIREBALL"), "Equipped skill appears in log")
 	screen._open_log()
 	_check(screen.log_overlay.visible, "Combat log overlay opens")
 	screen._close_log()
