@@ -38,3 +38,5 @@ animations are not included in the pack.
 
 Architecture recommendations are separate: PROPOSED_COMBAT_GUARDRAILS.md. They
 are proposals only, not changes in this playtest build.
+
+Graphical feedback follow-up: see [visual evidence and remaining issues](VISUAL_INTEGRATION_REVIEW.md). This branch is still not approved to merge.

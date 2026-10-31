@@ -24,3 +24,10 @@ Skeleton helmet is baked into its primary head; independent helmet removal needs
 new head art. Gloves/boots helper affects near limbs; far limbs remain separate
 Sprite2D parts. This is attachment support, not an inventory system. Generator
 scripts overwrite scenes: update rig.json or preserve manual edits before rebuilding.
+
+
+## Graphical feedback correction
+Runtime far-forearm layers are now Z=9 rather than the supplied Z=3, in both
+scenes and matching rig JSON. Original art/character_pack remains unchanged for
+source comparison. Native tracks and PNG parts remain unchanged. Actual Linux
+OpenGL screenshots and source/integration ownership are in VISUAL_INTEGRATION_REVIEW.md.

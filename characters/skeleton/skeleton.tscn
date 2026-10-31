@@ -684,7 +684,7 @@ position = Vector2(-14.0, -5.88)
 
 scale = Vector2(0.23931623931623933, 0.18490566037735848)
 
-z_index = 3
+z_index = 9
 
 texture = ExtResource("5")
 

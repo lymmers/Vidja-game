@@ -81,3 +81,11 @@ components require the Director's approval before further work.
 The stage uses z=-100 so native positive sprite layers remain below the z=0
 HUD, skill draft and combat-log overlays. Effective-z regression tests cover all
 rig Sprite2D parts; native internal layer ordering is preserved.
+
+
+## Subsequent visual review
+The original byte-identity/headless findings above describe the initial integration,
+not a visual acceptance. Director playtesting exposed source forearm occlusion.
+Runtime scene/rig JSON layer values have since been corrected; actual rendered
+evidence and outstanding contact/asset issues are recorded in
+VISUAL_INTEGRATION_REVIEW.md. No merge approval is implied.
