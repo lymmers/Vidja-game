@@ -36,7 +36,7 @@ func _test_iron_skin_breakdown() -> void:
 	event["attacker"] = "enemy"
 	var message: String = LogScript.format_event(event, "MOSS GOBLIN")
 	_check(message.contains("Moss Goblin hit you for 14 Physical damage"), "physical hit names attacker and damage")
-	_check(message.contains("20 base") and message.contains("-2 Armor") and message.contains("-4 Iron Skin"), "physical mitigation is itemized")
+	_check(message.contains("20 base") and message.contains("-2 Armor") and message.contains("-4 Iron Skin (20%)"), "physical mitigation is itemized")
 
 func _test_magic_resistance_breakdown() -> void:
 	var battle = BattleScript.new(42)
