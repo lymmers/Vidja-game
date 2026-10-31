@@ -11,6 +11,7 @@ func _test_screen() -> void:
 	root.add_child(screen)
 	await process_frame
 	assert(screen.draft_overlay.visible, "Initial skill draft should pause play")
+	assert(screen.combat_log_entries.size() == 1, "Log starts with encounter heading")
 	assert(screen.draft_holder.get_child_count() == 3, "First draft offers 3 skills")
 
 	screen._choose_skill("fireball")
@@ -18,6 +19,15 @@ func _test_screen() -> void:
 	assert(not screen.draft_overlay.visible, "Choosing closes the draft")
 	assert(screen.battle.has_skill("fireball"), "Selected skill is active")
 	assert(screen.skill_slots[0].text.contains("FIREBALL"), "Skill bar shows chosen skill")
+	assert(screen.log_text.text.contains("Fireball"), "Equipped skill appears in log")
+	screen._open_log()
+	assert(screen.log_overlay.visible, "Combat log overlay opens")
+	screen._close_log()
+	assert(not screen.log_overlay.visible, "Combat log overlay closes")
+	var hit: Dictionary = screen.battle.take_next_turn()["events"][0]
+	screen._record_hit(hit)
+	assert(screen.log_text.text.contains("Physical damage"), "Combat log records real damage")
+	assert(screen.combat_log_entries.size() >= 3, "Combat history accumulates")
 
 	# Jump to the between-fights selection without relying on random combat.
 	screen.run_id += 1
