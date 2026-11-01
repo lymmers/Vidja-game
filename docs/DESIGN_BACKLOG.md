@@ -100,6 +100,16 @@ _Last reviewed: 2026-10-31. Owner: Game Director._
 - [ ] More heroes, weapons, skill families, companions/pets and eventual game modes.
 - [ ] Add complex synergies only when per-actor actions, trigger provenance and action-chain safety are reliable.
 
+## P7a — Combat archetypes and supporting styles (PARKED; not implementation-approved)
+
+**Early brainstorming only.** These are candidate build specializations, not fixed hero classes or confirmed launch content. Heroes may naturally favor certain builds, but should not be locked into them.
+
+- **Power / damage archetypes:** Fire, Ice, Lightning, Bleed, Poison, Void, Light. Exact identities, mechanics and balance are undecided.
+- **Supporting combat styles:** Combo, Defense, Critical Hits, Counterattacks, etc. These describe *how* a build fights and may enhance any power archetype.
+- **Combo is a supporting style, not an eighth standalone power archetype.** Examples to explore later: Fire+Combo builds heat through consecutive hits; Ice+Combo accelerates freeze buildup; Poison+Combo applies repeated stacks; physical Combo builds are also viable.
+- Cross-archetype combinations should be discoverable and expressive without forcing classes or restricting unconventional hero builds.
+- **No implementation now.** Revisit after the two-enemy prototype has satisfying combat and a small proven skill pool.
+
 ## Decision / development workflow
 
 1. Director proposes/approves direction; Design Chat explores tradeoffs and records decisions.
